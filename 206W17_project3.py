@@ -14,8 +14,8 @@ import twitter_info # same deal as always...
 import json
 import sqlite3
 
-## Your name:
-## The names of anyone you worked with on this project:
+## Your name: Renee Armstrong
+## The names of anyone you worked with on this project: N/A
 
 #####
 
@@ -36,18 +36,36 @@ api = tweepy.API(auth, parser=tweepy.parsers.JSONParser())
 ## Task 1 - Gathering data
 
 ## Define a function called get_user_tweets that gets at least 20 Tweets from a specific Twitter user's timeline, and uses caching. The function should return a Python object representing the data that was retrieved from Twitter. (This may sound familiar...) We have provided a CACHE_FNAME variable for you for the cache file name, but you must write the rest of the code in this file.
-
+# Define your function get_user_tweets here:
 CACHE_FNAME = "SI206_project3_cache.json"
 # Put the rest of your caching setup here:
+try: 
+	cache_file = open(CACHE_FNAME, 'r')
+	cache_contents = cache_file.read()
+	CACHE_DICTION = json.loads(cache_contents)
+except:
+	CACHE_DICTION = {}
 
+def get_user_tweets(username):
+	unique_identifier = "twitter_{}".format(username)
+	if unique_identifier in CACHE_DICTION:
+		
+		twitter_results = CACHE_DICTION[unique_identifier]		
+	else:
+		
+		twitter_results = api.user_timeline(username)
+		CACHE_DICTION[unique_identifier] = twitter_results
+		f = open(CACHE_FNAME, 'w')
+		f.write(json.dumps(CACHE_DICTION))
+		f.close()
 
-
-# Define your function get_user_tweets here:
-
-
+	return twitter_results
 
 
 # Write an invocation to the function for the "umich" user timeline and save the result in a variable called umich_tweets:
+
+umich_tweets = get_user_tweets("umich")
+
 
 
 
@@ -57,6 +75,8 @@ CACHE_FNAME = "SI206_project3_cache.json"
 # You will be creating a database file: project3_tweets.db
 # Note that running the tests will actually create this file for you, but will not do anything else to it like create any tables; you should still start it in exactly the same way as if the tests did not do that! 
 # The database file should have 2 tables, and each should have the following columns... 
+conn = sqlite3.connect('project3_tweets.db')
+cur = conn.cursor()
 
 # table Tweets, with columns:
 # - tweet_id (containing the string id belonging to the Tweet itself, from the data you got from Twitter -- note the id_str attribute) -- this column should be the PRIMARY KEY of this table
@@ -64,20 +84,52 @@ CACHE_FNAME = "SI206_project3_cache.json"
 # - user_id (an ID string, referencing the Users table, see below)
 # - time_posted (the time at which the tweet was created)
 # - retweets (containing the integer representing the number of times the tweet has been retweeted)
+cur.execute('DROP TABLE IF EXISTS Tweets')
+cur.execute('CREATE TABLE Tweets(tweet_id TEXT, text TEXT, user_id TEXT, time_posted TEXT, retweets INTEGER)')
+
 
 # table Users, with columns:
 # - user_id (containing the string id belonging to the user, from twitter data -- note the id_str attribute) -- this column should be the PRIMARY KEY of this table
 # - screen_name (containing the screen name of the user on Twitter)
 # - num_favs (containing the number of tweets that user has favorited)
 # - description (text containing the description of that user on Twitter, e.g. "Lecturer IV at UMSI focusing on programming" or "I tweet about a lot of things" or "Software engineer, librarian, lover of dogs..." -- whatever it is. OK if an empty string)
+cur.execute('DROP TABLE IF EXISTS Users')
+cur.execute('CREATE TABLE Users(user_id TEXT PRIMARY KEY, screen_name TEXT, num_favs INTEGER, description TEXT)')
+
 
 ## You should load into the Users table:
 # The umich user, and all of the data about users that are mentioned in the umich timeline. 
 # NOTE: For example, if the user with the "TedXUM" screen name is mentioned in the umich timeline, that Twitter user's info should be in the Users table, etc.
 
+statement1 = "INSERT OR IGNORE INTO Users VALUES(?,?,?,?)"
+for x in umich_tweets:
+	user_id = x["user"]["id"]
+	screenname = x["user"]["screen_name"]
+	num_favs = x["user"]["favourites_count"]
+	description = x["user"]["description"]
+
+	tweet = (user_id, screenname, num_favs, description)
+	
+	cur.execute(statement1, tweet)
+
+ statement2 = "INSERT OR IGNORE INTO Users VALUES(?,?,?,?)"
+
+for x in umich_tweets:
+	user_id = x["user"]["entities"]["user_mentions"]["id_str"]
+	screenname = x["user"]["entities"]["user_mentions"]["screen_name"]
+	num_favs =  get_user_tweets(x["user"]["entities"]["user_mentions"]["screen_name"])["user"]["favourites_count"]
+	description = get_user_tweets(x["user"]["entities"]["user_mentions"]["screen_name"])["user"]["description"]
+
+	tweets = (user_id, screenname, num_favs, description)
+	cur.execute(statement2, tweets)
+
+
+
 ## You should load into the Tweets table: 
 # Info about all the tweets (at least 20) that you gather from the umich timeline.
 # NOTE: Be careful that you have the correct user ID reference in the user_id column! See below hints.
+
+
 
 ## HINT: There's a Tweepy method to get user info that we've looked at before, so when you have a user id or screenname you can find alllll the info you want about the user.
 ## HINT #2: You may want to go back to a structure we used in class this week to ensure that you reference the user correctly in each Tweet record.
@@ -133,7 +185,7 @@ CACHE_FNAME = "SI206_project3_cache.json"
 
 ### IMPORTANT: MAKE SURE TO CLOSE YOUR DATABASE CONNECTION AT THE END OF THE FILE HERE SO YOU DO NOT LOCK YOUR DATABASE (it's fixable, but it's a pain). ###
 
-
+conn.close()
 ###### TESTS APPEAR BELOW THIS LINE ######
 ###### Note that the tests are necessary to pass, but not sufficient -- must make sure you've followed the instructions accurately! ######
 print("\n\nBELOW THIS LINE IS OUTPUT FROM TESTS:\n")
