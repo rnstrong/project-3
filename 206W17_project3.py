@@ -43,6 +43,7 @@ try:
 	cache_file = open(CACHE_FNAME, 'r')
 	cache_contents = cache_file.read()
 	CACHE_DICTION = json.loads(cache_contents)
+	cache_file.close()
 except:
 	CACHE_DICTION = {}
 
@@ -85,7 +86,7 @@ cur = conn.cursor()
 # - time_posted (the time at which the tweet was created)
 # - retweets (containing the integer representing the number of times the tweet has been retweeted)
 cur.execute('DROP TABLE IF EXISTS Tweets')
-cur.execute('CREATE TABLE Tweets(tweet_id TEXT, text TEXT, user_id TEXT, time_posted TEXT, retweets INTEGER)')
+cur.execute('CREATE TABLE Tweets(tweet_id TEXT PRIMARY KEY, text TEXT, user_id TEXT, time_posted TEXT, retweets INTEGER)')
 
 
 # table Users, with columns:
@@ -103,25 +104,17 @@ cur.execute('CREATE TABLE Users(user_id TEXT PRIMARY KEY, screen_name TEXT, num_
 
 statement1 = "INSERT OR IGNORE INTO Users VALUES(?,?,?,?)"
 for x in umich_tweets:
-	user_id = x["user"]["id"]
+	user_id = x["user"]["id_str"]
 	screenname = x["user"]["screen_name"]
 	num_favs = x["user"]["favourites_count"]
-	description = x["user"]["description"]
+	description = x["user"]["description"].encode("utf-8")
 
 	tweet = (user_id, screenname, num_favs, description)
-	
+	print(tweet)
 	cur.execute(statement1, tweet)
 
- statement2 = "INSERT OR IGNORE INTO Users VALUES(?,?,?,?)"
 
-for x in umich_tweets:
-	user_id = x["user"]["entities"]["user_mentions"]["id_str"]
-	screenname = x["user"]["entities"]["user_mentions"]["screen_name"]
-	num_favs =  get_user_tweets(x["user"]["entities"]["user_mentions"]["screen_name"])["user"]["favourites_count"]
-	description = get_user_tweets(x["user"]["entities"]["user_mentions"]["screen_name"])["user"]["description"]
 
-	tweets = (user_id, screenname, num_favs, description)
-	cur.execute(statement2, tweets)
 
 
 
@@ -131,6 +124,15 @@ for x in umich_tweets:
 
 
 
+
+
+
+
+
+
+
+
+conn.commit()
 ## HINT: There's a Tweepy method to get user info that we've looked at before, so when you have a user id or screenname you can find alllll the info you want about the user.
 ## HINT #2: You may want to go back to a structure we used in class this week to ensure that you reference the user correctly in each Tweet record.
 ## HINT #3: The users mentioned in each tweet are included in the tweet dictionary -- you don't need to do any manipulation of the Tweet text to find out which they are! Do some nested data investigation on a dictionary that represents 1 tweet to see it!
@@ -150,6 +152,8 @@ for x in umich_tweets:
 # All of the following sub-tasks require writing SQL statements and executing them using Python.
 
 # Make a query to select all of the records in the Users database. Save the list of tuples in a variable called users_info.
+
+
 
 # Make a query to select all of the user screen names from the database. Save a resulting list of strings (NOT tuples, the strings inside them!) in the variable screen_names. HINT: a list comprehension will make this easier to complete!
 
