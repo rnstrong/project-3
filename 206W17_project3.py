@@ -144,6 +144,19 @@ for tweet in umich_tweets:
 # Info about all the tweets (at least 20) that you gather from the umich timeline.
 # NOTE: Be careful that you have the correct user ID reference in the user_id column! See below hints.
 
+statement2 = "INSERT OR IGNORE INTO Tweets VALUES(?,?,?,?,?)"
+for tweet in umich_tweets:
+	tweet_text = tweet["text"].encode("utf-8")
+	tweet_id = tweet["id_str"]
+	tweet_user = tweet["user"]["id_str"]
+	tweet_date = tweet["created_at"]
+	retweet_count = tweet["retweet_count"]
+
+	tweet_data = (tweet_id, tweet_text, tweet_user, tweet_date, retweet_count)
+	cur.execute(statement2, tweet_data)
+
+
+
 
 
 
