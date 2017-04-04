@@ -103,15 +103,37 @@ cur.execute('CREATE TABLE Users(user_id TEXT PRIMARY KEY, screen_name TEXT, num_
 # NOTE: For example, if the user with the "TedXUM" screen name is mentioned in the umich timeline, that Twitter user's info should be in the Users table, etc.
 
 statement1 = "INSERT OR IGNORE INTO Users VALUES(?,?,?,?)"
-for x in umich_tweets:
-	user_id = x["user"]["id_str"]
-	screenname = x["user"]["screen_name"]
-	num_favs = x["user"]["favourites_count"]
-	description = x["user"]["description"].encode("utf-8")
+for tweet in umich_tweets:
+	user_id = tweet["user"]["id_str"]
+	screenname = tweet["user"]["screen_name"]
+	num_favs = tweet["user"]["favourites_count"]
+	description = tweet["user"]["description"].encode("utf-8")
+	user = (user_id, screenname, num_favs, description)
+	cur.execute(statement1, user)
+	
+	if len(tweet["entities"]["user_mentions"]) > 0:
+		for mention in tweet["entities"]["user_mentions"]:
+			mention_id = mention["id_str"]
+			mention_screen = mention["screen_name"]
+			
+			
+			if mention_screen in CACHE_DICTION:
+				mention_results = CACHE_DICTION[mention_screen]	
+				m_num_favs = 	mention_results["favourites_count"]
+				m_description = mention_results["description"].encode("utf-8")
+			else:
+		
+				mention_results = api.get_user(mention_screen)
+				CACHE_DICTION[mention_screen] = mention_results
+				f = open(CACHE_FNAME, 'w')
+				f.write(json.dumps(CACHE_DICTION))
+				f.close()
+				m_num_favs = 	mention_results["favourites_count"]
+				m_description = mention_results["description"].encode("utf-8")
+			
+			mention_user = (mention_id, mention_screen, m_num_favs, m_description)
+			cur.execute(statement1, mention_user)
 
-	tweet = (user_id, screenname, num_favs, description)
-	print(tweet)
-	cur.execute(statement1, tweet)
 
 
 
