@@ -107,7 +107,7 @@ for tweet in umich_tweets:
 	user_id = tweet["user"]["id_str"]
 	screenname = tweet["user"]["screen_name"]
 	num_favs = tweet["user"]["favourites_count"]
-	description = tweet["user"]["description"].encode("utf-8")
+	description = tweet["user"]["description"]
 	user = (user_id, screenname, num_favs, description)
 	cur.execute(statement1, user)
 	
@@ -120,7 +120,7 @@ for tweet in umich_tweets:
 			if mention_screen in CACHE_DICTION:
 				mention_results = CACHE_DICTION[mention_screen]	
 				m_num_favs = 	mention_results["favourites_count"]
-				m_description = mention_results["description"].encode("utf-8")
+				m_description = mention_results["description"]
 			else:
 		
 				mention_results = api.get_user(mention_screen)
@@ -129,7 +129,7 @@ for tweet in umich_tweets:
 				f.write(json.dumps(CACHE_DICTION))
 				f.close()
 				m_num_favs = 	mention_results["favourites_count"]
-				m_description = mention_results["description"].encode("utf-8")
+				m_description = mention_results["description"]
 			
 			mention_user = (mention_id, mention_screen, m_num_favs, m_description)
 			cur.execute(statement1, mention_user)
@@ -146,7 +146,7 @@ for tweet in umich_tweets:
 
 statement2 = "INSERT OR IGNORE INTO Tweets VALUES(?,?,?,?,?)"
 for tweet in umich_tweets:
-	tweet_text = tweet["text"].encode("utf-8")
+	tweet_text = tweet["text"]
 	tweet_id = tweet["id_str"]
 	tweet_user = tweet["user"]["id_str"]
 	tweet_date = tweet["created_at"]
@@ -190,7 +190,7 @@ conn.commit()
 q1 = "SELECT * FROM Users"
 cur.execute(q1)
 users_info = cur.fetchall()
-print(users_info)
+
 
 
 # Make a query to select all of the user screen names from the database. Save a resulting list of strings (NOT tuples, the strings inside them!) in the variable screen_names. HINT: a list comprehension will make this easier to complete!
@@ -198,26 +198,32 @@ q2 = "SELECT screen_name FROM Users"
 cur.execute(q2)
 names = cur.fetchall()
 screen_names = [x[0] for x in names]
-print(screen_names)
+
 
 
 
 # Make a query to select all of the tweets (full rows of tweet information) that have been retweeted more than 25 times. Save the result (a list of tuples, or an empty list) in a variable called more_than_25_rts.
+q3 = "SELECT * FROM Tweets WHERE retweets > 25"
+cur.execute(q3)
+more_than_25_rts = cur.fetchall()
+
 
 
 
 # Make a query to select all the descriptions (descriptions only) of the users who have favorited more than 25 tweets. Access all those strings, and save them in a variable called descriptions_fav_users, which should ultimately be a list of strings.
-q5 = "SELECT description FROM Users WHERE num_favs > 25"
-cur.execute(q5)
+q4 = "SELECT description FROM Users WHERE num_favs > 25"
+cur.execute(q4)
 favs = cur.fetchall()
 descriptions_fav_users = [x[0] for x in favs]
-print(descriptions_fav_users)
+
+
 
 
 
 # Make a query using an INNER JOIN to get a list of tuples with 2 elements in each tuple: the user screenname and the text of the tweet -- for each tweet that has been retweeted more than 50 times. Save the resulting list of tuples in a variable called joined_result.
-
-
+q5 = "SELECT screen_name, text FROM Users INNER JOIN Tweets on Users.user_id=Tweets.user_id WHERE retweets > 5"
+cur.execute(q5)
+joined_result = cur.fetchall()
 
 
 ## Task 4 - Manipulating data with comprehensions & libraries
@@ -237,12 +243,42 @@ for d in descriptions_fav_users:
 
 
 ## Use a Counter in the collections library to find the most common character among all of the descriptions in the descriptions_fav_users list. Save that most common character in a variable called most_common_char. Break any tie alphabetically (but using a Counter will do a lot of work for you...).
+letters = []
+for word in description_words:
+	for letter in list(word):
+		letters.append(letter)
+
+ordered = collections.Counter(letters).most_common()
+most_common_char = ordered[0][0]
 
 
+	
 
 ## Putting it all together...
 # Write code to create a dictionary whose keys are Twitter screen names and whose associated values are lists of tweet texts that that user posted. You may need to make additional queries to your database! To do this, you can use, and must use at least one of: the DefaultDict container in the collections library, a dictionary comprehension, list comprehension(s). Y
 # You should save the final dictionary in a variable called twitter_info_diction.
+
+info_diction = collections.defaultdict(list)
+q6 = "SELECT screen_name, text FROM Users INNER JOIN Tweets on Users.user_id=Tweets.user_id"
+cur.execute(q6)
+user_text = cur.fetchall()
+print(type(user_text))
+for user, text in user_text:
+	info_diction[user].append(text)
+
+twitter_info_diction = dict(info_diction)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -346,7 +382,7 @@ class Task3(unittest.TestCase):
 
 class Task4(unittest.TestCase):
 	def test_description_words(self):
-		print("To help test, description words looks like:", description_words)
+		##print("To help test, description words looks like:", description_words)
 		self.assertEqual(type(description_words),type({"hi","Bye"}),"Testing that description words is a set")
 	def test_common_char(self):
 		self.assertEqual(type(most_common_char),type(""),"Testing that most_common_char is a string")
